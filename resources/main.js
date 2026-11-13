@@ -10,6 +10,8 @@ const PRESS_DELAY_MILLISECONDS = 150;
 // In CSS px.
 const DRAG_THRESHOLD = 5;
 const APPEAR_MILLISECONDS = 300;
+// A deleted row fades out faster than it shrinks.
+const DELETE_FADE_MILLISECONDS = 200;
 const HOLD_TO_DELETE_MILLISECONDS = 2000;
 const UPCOMING_OPACITY = 0.35;
 const MAX_VOLUME = 2;
@@ -118,7 +120,11 @@ async function setUpAudio() {
 	await audio.audioWorklet.addModule('resources/deck.js');
 	deck = new AudioWorkletNode(audio, 'deck', {
 		outputChannelCount: [1],
-		processorOptions: {spinUpSeconds: SPIN_UP_SECONDS, spinDownSeconds: SPIN_DOWN_SECONDS},
+		processorOptions: {
+			spinUpSeconds: SPIN_UP_SECONDS,
+			spinDownSeconds: SPIN_DOWN_SECONDS,
+			deleteSeconds: APPEAR_MILLISECONDS / 1000,
+		},
 	});
 	deck.connect(audio.destination);
 	deck.port.onmessage = ({data}) => handlers[data.type](data);
@@ -314,8 +320,9 @@ function makeGrabbable(tape, id) {
 		forgetTape(tape);
 		tapes[id] = null;
 		row.classList.remove('finished');
+		row.animate([{}, {opacity: 0}], {duration: DELETE_FADE_MILLISECONDS, easing: 'ease-out', fill: 'forwards'});
 		row.animate(
-			[{}, {height: 0, opacity: 0}],
+			[{}, {height: 0}],
 			{duration: APPEAR_MILLISECONDS, easing: 'ease-out'},
 		).finished.then(() => row.remove());
 	};

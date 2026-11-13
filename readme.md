@@ -10,11 +10,19 @@
 
 ### play it loud.
 
-<p align="center"><img src="readme_images/loud.gif" width="390"></p>
+<p align="center"><img src="readme_images/volume.gif" width="390"></p>
 
 ### scrub a dub, bub.
 
 <p align="center"><img src="readme_images/scrub.gif" width="390"></p>
+
+### wipeout.
+
+<p align="center"><img src="readme_images/delete.gif" width="390"></p>
+
+### take it from the top.
+
+<p align="center"><img src="readme_images/scroll.gif" width="390"></p>
 
 ### home recording.
 

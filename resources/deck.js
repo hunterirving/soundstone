@@ -22,6 +22,7 @@ class Deck extends AudioWorkletProcessor {
 		super();
 		this.spinUpRate = 1 / (processorOptions.spinUpSeconds * sampleRate);
 		this.spinDownSamples = processorOptions.spinDownSeconds * sampleRate;
+		this.deleteRate = 1 / (processorOptions.deleteSeconds * sampleRate);
 		this.tapes = [];
 		this.recording = null;
 		this.renders = 0;
@@ -52,8 +53,8 @@ class Deck extends AudioWorkletProcessor {
 				tape.held = true;
 				tape.pressed = false;
 			}
-			// Nulled, not spliced, so the other ids stay valid.
-			if (data.type === 'delete') this.tapes[data.id] = null;
+			// A deleted tape fades out first, so that a playing one does not click.
+			if (data.type === 'delete') tape.fadeRate = this.deleteRate;
 			if (data.type === 'drag') tape.pull += data.bars * BAR_SAMPLES;
 			if (data.type === 'drop') tape.pressed = false;
 			if (data.type === 'release') {
@@ -148,6 +149,9 @@ class Deck extends AudioWorkletProcessor {
 			volume,
 			// Smoothed `volume`.
 			gain: volume,
+			// Falls from 1 to 0 at `fadeRate` per sample once the tape is deleted.
+			fade: 1,
+			fadeRate: 0,
 		});
 	}
 
@@ -164,9 +168,14 @@ class Deck extends AudioWorkletProcessor {
 			}
 		}
 
-		for (const tape of this.tapes) {
+		for (const [id, tape] of this.tapes.entries()) {
 			if (!tape) continue;
 			const goal = tape.pressed ? 0 : tape.target;
+			// Nulled, not spliced, so the other ids stay valid.
+			if (tape.fade === 0 || (tape.fadeRate && tape.speed === 0)) {
+				this.tapes[id] = null;
+				continue;
+			}
 			if (tape.speed === 0 && tape.pull === 0 && (tape.held || goal === 0)) {
 				tape.gain = tape.volume;
 				continue;
@@ -186,12 +195,13 @@ class Deck extends AudioWorkletProcessor {
 					tape.speed += Math.sign(gap) * Math.min(distance, change);
 				}
 				tape.gain += (tape.volume - tape.gain) * VOLUME_RATE;
+				tape.fade = Math.max(0, tape.fade - tape.fadeRate);
 				const index = Math.floor(tape.position);
 				const fraction = tape.position - index;
 				const a = samples[index];
 				const b = samples[index + 1 === length ? 0 : index + 1];
 				// Level follows speed up to 1, like a real playback head.
-				output[i] += (a + (b - a) * fraction) * Math.min(1, Math.abs(tape.speed)) * tape.gain;
+				output[i] += (a + (b - a) * fraction) * Math.min(1, Math.abs(tape.speed)) * tape.gain * tape.fade;
 				tape.position += tape.speed;
 				if (tape.position < 0 || tape.position >= length) {
 					tape.position = (tape.position % length + length) % length;
