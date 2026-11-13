@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Recordings for readme
+recordings/

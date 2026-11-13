@@ -1,0 +1,21 @@
+# soundstone
+
+### lay down a track.
+
+<p align="center"><img src="readme_images/record.gif" width="390"></p>
+
+### play it back.
+
+<p align="center"><img src="readme_images/play.gif" width="390"></p>
+
+### play it loud.
+
+<p align="center"><img src="readme_images/loud.gif" width="390"></p>
+
+### scrub a dub, bub.
+
+<p align="center"><img src="readme_images/scrub.gif" width="390"></p>
+
+### home recording.
+
+try soundstone <a href="https://hunterirving.github.io/soundstone">in your web browser</a>, or install it as a <a href="https://hunterirving.github.io/web_workshop/pages/pwa">progressive web app</a>.

@@ -1,0 +1,93 @@
+html {
+	background: #000;
+	touch-action: manipulation;
+}
+
+body {
+	--footer-space: calc((22.5dvh - 72px) / 2);
+	display: flex;
+	flex-direction: column;
+	height: 100dvh;
+	max-width: 520px;
+	margin: 0 auto;
+	overflow: hidden;
+	touch-action: manipulation;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
+#tapes {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow-y: auto;
+	scrollbar-width: none;
+}
+
+.tape {
+	flex: none;
+	height: 15.5dvh;
+	overflow: hidden;
+	touch-action: none;
+}
+
+.tape:first-child {
+	margin-top: auto;
+}
+
+.tape.finished {
+	cursor: grab;
+}
+
+.tape.grabbed {
+	cursor: grabbing;
+}
+
+.tape canvas {
+	display: block;
+	width: 92%;
+	height: 15.5dvh;
+	margin-inline: auto;
+}
+
+footer {
+	flex: none;
+	position: relative;
+	display: grid;
+	place-items: center;
+	padding: calc(var(--footer-space) / 2) 0 var(--footer-space);
+	touch-action: none;
+}
+
+footer::before {
+	content: '';
+	position: absolute;
+	inset: auto 0 100%;
+	height: 28px;
+	background: linear-gradient(to top, #000, rgb(0 0 0 / 0.6) 30%, transparent);
+	pointer-events: none;
+}
+
+#record {
+	width: 72px;
+	height: 72px;
+	padding: 0;
+	border: 0;
+	background: none;
+	cursor: pointer;
+}
+
+#record::before {
+	content: '';
+	display: block;
+	height: 100%;
+	border-radius: 50%;
+	background: #f00;
+	transition: transform 0.1s ease-out, border-radius 0.1s ease-out;
+}
+
+#record.recording::before {
+	transform: scale(0.905);
+	border-radius: 22%;
+}
