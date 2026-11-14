@@ -21,6 +21,8 @@ const BAR_EASE_SECONDS = 0.035;
 // reaches SCROLL_TOP_SPEED px/s.
 const SCROLL_FULL_DRAG = 100;
 const SCROLL_TOP_SPEED = 1000;
+// Sideways drag distance, in CSS px, that changes a tape's speed by 1.
+const JOG_DRAG = 100;
 // The iOS built-in microphone is super quiet with processing off, and while it is
 // open the speaker plays quieter. These gains compensate.
 const BUILT_IN_MICROPHONE_GAIN = 20;
@@ -217,8 +219,8 @@ const handlers = {
 		recording = null;
 	},
 
-	released({id, speed}) {
-		if (tapes[id]) tapes[id].direction = Math.sign(speed);
+	direction({id, direction}) {
+		if (tapes[id]) tapes[id].direction = direction;
 	},
 
 	positions({positions}) {
@@ -303,7 +305,6 @@ function makeGrabbable(tape, id) {
 	const {row} = tape;
 	const send = (type, fields) => deck.port.postMessage({type, id, ...fields});
 	let start = null;
-	let lastX = 0;
 	let mode = null;
 	let wasPlaying = false;
 	// This pointer has started braking the tape.
@@ -337,7 +338,6 @@ function makeGrabbable(tape, id) {
 		pointerId = event.pointerId;
 		row.setPointerCapture(pointerId);
 		start = {x: event.clientX, y: event.clientY, volume: tape.volume};
-		lastX = event.clientX;
 		mode = null;
 		wasPlaying = tape.direction !== 0;
 		pressed = false;
@@ -357,18 +357,15 @@ function makeGrabbable(tape, id) {
 			const upTravel = Math.abs(event.clientY - start.y);
 			if (Math.max(acrossTravel, upTravel) < DRAG_THRESHOLD) return;
 			if (acrossTravel < upTravel && pressed) return;
-			mode = acrossTravel >= upTravel ? 'scrub' : 'volume';
+			mode = acrossTravel >= upTravel ? 'jog' : 'volume';
 			clearTimeout(pressTimer);
 			clearTimeout(holdTimer);
 			row.classList.add('grabbed');
-			if (mode === 'scrub') send('grab');
+			if (mode === 'jog') send('grab');
 			pressed = false;
 		}
-		if (mode === 'scrub') {
-			// Dragging left pulls later tape under the head, which is forwards.
-			const pitch = tape.canvas.clientWidth / SLOTS;
-			send('drag', {bars: (lastX - event.clientX) / pitch});
-			lastX = event.clientX;
+		if (mode === 'jog') {
+			send('jog', {change: (event.clientX - start.x) / JOG_DRAG});
 		} else {
 			const change = (start.y - event.clientY) / row.clientHeight;
 			tape.volume = Math.min(MAX_VOLUME, Math.max(0, start.volume + change));
@@ -385,7 +382,7 @@ function makeGrabbable(tape, id) {
 		start = null;
 		row.classList.remove('grabbed');
 		if (mode === 'volume') saveVolume(tape);
-		if (mode === 'scrub') {
+		if (mode === 'jog') {
 			send('release');
 		} else if (!mode && event.type === 'pointerup') {
 			send(wasPlaying ? 'brake' : 'play');

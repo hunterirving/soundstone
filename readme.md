@@ -12,9 +12,9 @@
 
 <p align="center"><img src="readme_images/volume.gif" width="390"></p>
 
-### scrub a dub, bub.
+### run it back.
 
-<p align="center"><img src="readme_images/scrub.gif" width="390"></p>
+<p align="center"><img src="readme_images/jog.gif" width="390"></p>
 
 ### wipeout.
 

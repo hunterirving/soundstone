@@ -1,11 +1,11 @@
 const BAR_SECONDS = 0.1;
 const SPLICE_SECONDS = 0.005;
-// Time constant of a held tape chasing the finger.
+// Time constant of a held tape's speed chasing the finger.
 const FOLLOW_SECONDS = 0.05;
 // Extra acceleration for the part of a speed gap beyond 1, so big gaps close fast.
 const FAST_DECAY_SECONDS = 0.35;
-// A release slower than this, as a fraction of normal speed, leaves the tape stopped.
-const SLOWEST_THROW = 0.05;
+// A tape jogged slower than this, as a fraction of normal speed, counts as stopped.
+const SLOWEST_JOG = 0.05;
 // Volume smoothing, against clicks.
 const VOLUME_SECONDS = 0.02;
 const RENDERS_PER_REPORT = 3;
@@ -52,20 +52,34 @@ class Deck extends AudioWorkletProcessor {
 			if (data.type === 'grab') {
 				tape.held = true;
 				tape.pressed = false;
+				tape.base = tape.speed;
+				tape.direction = null;
+				tape.target = tape.speed;
 			}
 			// A deleted tape fades out first, so that a playing one does not click.
 			if (data.type === 'delete') tape.fadeRate = this.deleteRate;
-			if (data.type === 'drag') tape.pull += data.bars * BAR_SAMPLES;
+			if (data.type === 'jog') {
+				tape.target = tape.base + data.change;
+				this.reportDirection(data.id);
+			}
 			if (data.type === 'drop') tape.pressed = false;
 			if (data.type === 'release') {
-				// No decay: the tape coasts at its drag speed.
 				tape.held = false;
-				tape.pull = 0;
-				if (Math.abs(tape.speed) < SLOWEST_THROW) tape.speed = 0;
-				tape.target = tape.speed;
-				this.port.postMessage({type: 'released', id: data.id, speed: tape.speed});
+				if (Math.abs(tape.target) < SLOWEST_JOG) {
+					tape.target = 0;
+					tape.speed = 0;
+				}
+				this.reportDirection(data.id);
 			}
 		};
+	}
+
+	reportDirection(id) {
+		const tape = this.tapes[id];
+		const direction = Math.abs(tape.target) < SLOWEST_JOG ? 0 : Math.sign(tape.target);
+		if (direction === tape.direction) return;
+		tape.direction = direction;
+		this.port.postMessage({type: 'direction', id, direction});
 	}
 
 	record() {
@@ -144,8 +158,10 @@ class Deck extends AudioWorkletProcessor {
 			pressed: false,
 			// Speed lost per sample while stopping.
 			stopRate: 0,
-			// Samples a held tape still lags behind the finger.
-			pull: 0,
+			// Speed when a jog began.
+			base: 0,
+			// Last direction reported to the main thread during this jog.
+			direction: null,
 			volume,
 			// Smoothed `volume`.
 			gain: volume,
@@ -176,7 +192,7 @@ class Deck extends AudioWorkletProcessor {
 				this.tapes[id] = null;
 				continue;
 			}
-			if (tape.speed === 0 && tape.pull === 0 && (tape.held || goal === 0)) {
+			if (tape.speed === 0 && goal === 0) {
 				tape.gain = tape.volume;
 				continue;
 			}
@@ -184,8 +200,7 @@ class Deck extends AudioWorkletProcessor {
 			const length = samples.length;
 			for (let i = 0; i < output.length; i++) {
 				if (tape.held) {
-					tape.speed = tape.pull / FOLLOW_SAMPLES;
-					tape.pull -= tape.speed;
+					tape.speed += (tape.target - tape.speed) / FOLLOW_SAMPLES;
 				} else if (tape.speed !== goal) {
 					const gap = goal - tape.speed;
 					const distance = Math.abs(gap);
@@ -209,10 +224,7 @@ class Deck extends AudioWorkletProcessor {
 					if (tape.position >= length) tape.position = 0;
 				}
 			}
-			if (tape.held && Math.abs(tape.pull) < 1) {
-				tape.pull = 0;
-				tape.speed = 0;
-			}
+			if (tape.held && tape.target === 0 && Math.abs(tape.speed) < 1e-4) tape.speed = 0;
 		}
 
 		// Soft-clip the raised mix, as in capture().
