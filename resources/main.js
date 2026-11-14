@@ -337,6 +337,7 @@ function makeGrabbable(tape, id) {
 		audio.resume();
 		pointerId = event.pointerId;
 		row.setPointerCapture(pointerId);
+		row.classList.add('grabbed');
 		start = {x: event.clientX, y: event.clientY, volume: tape.volume};
 		mode = null;
 		wasPlaying = tape.direction !== 0;
@@ -360,7 +361,7 @@ function makeGrabbable(tape, id) {
 			mode = acrossTravel >= upTravel ? 'throttle' : 'volume';
 			clearTimeout(pressTimer);
 			clearTimeout(holdTimer);
-			row.classList.add('grabbed');
+			row.classList.add(mode);
 			if (mode === 'throttle') send('grab');
 			pressed = false;
 		}
@@ -378,9 +379,9 @@ function makeGrabbable(tape, id) {
 		pointerId = null;
 		clearTimeout(pressTimer);
 		clearTimeout(holdTimer);
+		row.classList.remove('grabbed', 'throttle', 'volume');
 		if (!start) return;
 		start = null;
-		row.classList.remove('grabbed');
 		if (mode === 'volume') saveVolume(tape);
 		if (mode === 'throttle') {
 			send('release');

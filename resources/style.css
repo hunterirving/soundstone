@@ -44,6 +44,14 @@ body {
 	cursor: grabbing;
 }
 
+.tape.throttle {
+	cursor: col-resize;
+}
+
+.tape.volume {
+	cursor: row-resize;
+}
+
 .tape canvas {
 	display: block;
 	width: 92%;
