@@ -361,13 +361,16 @@ function makeGrabbable(tape, id) {
 			mode = acrossTravel >= upTravel ? 'throttle' : 'volume';
 			clearTimeout(pressTimer);
 			clearTimeout(holdTimer);
-			row.classList.add(mode);
+			// Browsers suspend audio until the first tap or click; a dragged touch
+			// doesn't count. Ignore a throttle drag before then, as the tape can't play.
+			if (mode === 'throttle' && audio.state !== 'running') mode = 'ignored';
+			if (mode !== 'ignored') row.classList.add(mode);
 			if (mode === 'throttle') send('grab');
 			pressed = false;
 		}
 		if (mode === 'throttle') {
 			send('throttle', {change: (event.clientX - start.x) / THROTTLE_DRAG});
-		} else {
+		} else if (mode === 'volume') {
 			const change = (start.y - event.clientY) / row.clientHeight;
 			tape.volume = Math.min(MAX_VOLUME, Math.max(0, start.volume + change));
 			send('volume', {value: tape.volume});
@@ -377,6 +380,9 @@ function makeGrabbable(tape, id) {
 	const end = event => {
 		if (event.pointerId !== pointerId) return;
 		pointerId = null;
+		// A touch only counts as a user gesture when it lifts without having moved,
+		// so the resume on pointerdown fails if this touch is the first one.
+		audio.resume();
 		clearTimeout(pressTimer);
 		clearTimeout(holdTimer);
 		row.classList.remove('grabbed', 'throttle', 'volume');
