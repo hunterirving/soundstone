@@ -17,12 +17,12 @@ const UPCOMING_OPACITY = 0.35;
 const MAX_VOLUME = 2;
 // Time constant of bar height changes.
 const BAR_EASE_SECONDS = 0.035;
-// Jog scroll speed grows with drag distance up to SCROLL_FULL_DRAG px, where it
+// Throttle scroll speed grows with drag distance up to SCROLL_FULL_DRAG px, where it
 // reaches SCROLL_TOP_SPEED px/s.
 const SCROLL_FULL_DRAG = 100;
 const SCROLL_TOP_SPEED = 1000;
 // Sideways drag distance, in CSS px, that changes a tape's speed by 1.
-const JOG_DRAG = 100;
+const THROTTLE_DRAG = 100;
 // The iOS built-in microphone is super quiet with processing off, and while it is
 // open the speaker plays quieter. These gains compensate.
 const BUILT_IN_MICROPHONE_GAIN = 20;
@@ -357,15 +357,15 @@ function makeGrabbable(tape, id) {
 			const upTravel = Math.abs(event.clientY - start.y);
 			if (Math.max(acrossTravel, upTravel) < DRAG_THRESHOLD) return;
 			if (acrossTravel < upTravel && pressed) return;
-			mode = acrossTravel >= upTravel ? 'jog' : 'volume';
+			mode = acrossTravel >= upTravel ? 'throttle' : 'volume';
 			clearTimeout(pressTimer);
 			clearTimeout(holdTimer);
 			row.classList.add('grabbed');
-			if (mode === 'jog') send('grab');
+			if (mode === 'throttle') send('grab');
 			pressed = false;
 		}
-		if (mode === 'jog') {
-			send('jog', {change: (event.clientX - start.x) / JOG_DRAG});
+		if (mode === 'throttle') {
+			send('throttle', {change: (event.clientX - start.x) / THROTTLE_DRAG});
 		} else {
 			const change = (start.y - event.clientY) / row.clientHeight;
 			tape.volume = Math.min(MAX_VOLUME, Math.max(0, start.volume + change));
@@ -382,7 +382,7 @@ function makeGrabbable(tape, id) {
 		start = null;
 		row.classList.remove('grabbed');
 		if (mode === 'volume') saveVolume(tape);
-		if (mode === 'jog') {
+		if (mode === 'throttle') {
 			send('release');
 		} else if (!mode && event.type === 'pointerup') {
 			send(wasPlaying ? 'brake' : 'play');
@@ -396,7 +396,7 @@ function makeGrabbable(tape, id) {
 	row.addEventListener('pointercancel', end);
 }
 
-// Jog control: while held, scroll speed follows the offset from the press point.
+// Throttle control: while held, scroll speed follows the offset from the press point.
 const footer = document.querySelector('footer');
 let scrollDrag = null;
 

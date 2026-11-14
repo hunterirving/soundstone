@@ -14,7 +14,7 @@
 
 ### run it back.
 
-<p align="center"><img src="readme_images/jog.gif" width="390"></p>
+<p align="center"><img src="readme_images/throttle.gif" width="390"></p>
 
 ### wipeout.
 

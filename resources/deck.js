@@ -4,8 +4,8 @@ const SPLICE_SECONDS = 0.005;
 const FOLLOW_SECONDS = 0.05;
 // Extra acceleration for the part of a speed gap beyond 1, so big gaps close fast.
 const FAST_DECAY_SECONDS = 0.35;
-// A tape jogged slower than this, as a fraction of normal speed, counts as stopped.
-const SLOWEST_JOG = 0.05;
+// A throttle setting slower than this, as a fraction of normal speed, counts as stopped.
+const SLOWEST_THROTTLE = 0.05;
 // Volume smoothing, against clicks.
 const VOLUME_SECONDS = 0.02;
 const RENDERS_PER_REPORT = 3;
@@ -58,14 +58,14 @@ class Deck extends AudioWorkletProcessor {
 			}
 			// A deleted tape fades out first, so that a playing one does not click.
 			if (data.type === 'delete') tape.fadeRate = this.deleteRate;
-			if (data.type === 'jog') {
+			if (data.type === 'throttle') {
 				tape.target = tape.base + data.change;
 				this.reportDirection(data.id);
 			}
 			if (data.type === 'drop') tape.pressed = false;
 			if (data.type === 'release') {
 				tape.held = false;
-				if (Math.abs(tape.target) < SLOWEST_JOG) {
+				if (Math.abs(tape.target) < SLOWEST_THROTTLE) {
 					tape.target = 0;
 					tape.speed = 0;
 				}
@@ -76,7 +76,7 @@ class Deck extends AudioWorkletProcessor {
 
 	reportDirection(id) {
 		const tape = this.tapes[id];
-		const direction = Math.abs(tape.target) < SLOWEST_JOG ? 0 : Math.sign(tape.target);
+		const direction = Math.abs(tape.target) < SLOWEST_THROTTLE ? 0 : Math.sign(tape.target);
 		if (direction === tape.direction) return;
 		tape.direction = direction;
 		this.port.postMessage({type: 'direction', id, direction});
@@ -158,9 +158,9 @@ class Deck extends AudioWorkletProcessor {
 			pressed: false,
 			// Speed lost per sample while stopping.
 			stopRate: 0,
-			// Speed when a jog began.
+			// Speed when a throttle drag began.
 			base: 0,
-			// Last direction reported to the main thread during this jog.
+			// Last direction reported to the main thread during this throttle drag.
 			direction: null,
 			volume,
 			// Smoothed `volume`.
