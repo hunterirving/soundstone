@@ -34,6 +34,8 @@ const recordButton = document.querySelector('#record');
 // A tape's index is its id on the audio thread. A deleted tape leaves a null behind.
 const tapes = [];
 let recording = null;
+// A promise of the screen wake lock held during a take.
+let wakeLock = null;
 let audio = null;
 let deck = null;
 let setup = null;
@@ -130,6 +132,10 @@ async function setUpAudio() {
 	});
 	deck.connect(audio.destination);
 	deck.port.onmessage = ({data}) => handlers[data.type](data);
+	// The system can interrupt the audio, as it does at lock in Safari.
+	audio.onstatechange = () => {
+		if (audio.state !== 'running') endTake();
+	};
 	setAudioSessionType('playback');
 	await loadTapes();
 }
@@ -147,8 +153,11 @@ function openMicrophone() {
 		});
 		const source = audio.createMediaStreamSource(stream);
 		source.connect(deck);
+		const [track] = stream.getAudioTracks();
+		// The system mutes or ends the track when it cuts the microphone.
+		track.onmute = track.onended = endTake;
 		// iOS names the built-in microphone after the device, as in "iPhone Microphone".
-		const builtIn = /iPhone|iPad/.test(stream.getAudioTracks()[0].label);
+		const builtIn = /iPhone|iPad/.test(track.label);
 		deck.port.postMessage({
 			type: 'microphone',
 			gain: builtIn ? BUILT_IN_MICROPHONE_GAIN : 1,
@@ -180,17 +189,20 @@ async function repairMicrophone() {
 }
 
 // In Safari an open microphone stops audio at lock, so it is released while
-// hidden unless a take is in progress.
+// hidden once no take is in progress.
+function releaseHiddenMicrophone() {
+	if (!navigator.audioSession || !document.hidden || !microphone || recording) return;
+	closeMicrophone();
+	setAudioSessionType('playback');
+}
+
 document.addEventListener('visibilitychange', async () => {
 	if (!navigator.audioSession || !deck) return;
 	if (!document.hidden) {
 		audio.resume();
 		if (microphoneUsed && !microphone) await openMicrophone();
 	}
-	if (document.hidden && microphone && !recording) {
-		closeMicrophone();
-		setAudioSessionType('playback');
-	}
+	releaseHiddenMicrophone();
 });
 
 const handlers = {
@@ -208,6 +220,7 @@ const handlers = {
 		tape.redraw = true;
 		makeGrabbable(tape, tapes.length);
 		tapes.push(tape);
+		releaseHiddenMicrophone();
 	},
 
 	silent() {
@@ -217,6 +230,7 @@ const handlers = {
 	discard() {
 		recording.row.remove();
 		recording = null;
+		releaseHiddenMicrophone();
 	},
 
 	direction({id, direction}) {
@@ -260,12 +274,16 @@ function addTape(fields) {
 	return tape;
 }
 
+function endTake() {
+	if (!recording) return;
+	deck.port.postMessage({type: 'stop'});
+	recordButton.classList.remove('recording');
+	wakeLock?.then(lock => lock.release());
+	wakeLock = null;
+}
+
 async function toggleRecording() {
-	if (recording) {
-		deck.port.postMessage({type: 'stop'});
-		recordButton.classList.remove('recording');
-		return;
-	}
+	if (recording) return endTake();
 	// Only a press may start audio, and it stops counting once the microphone
 	// prompt is answered, so resume before awaiting.
 	audio.resume();
@@ -278,6 +296,8 @@ async function toggleRecording() {
 	const {row} = recording;
 	deck.port.postMessage({type: 'record'});
 	recordButton.classList.add('recording');
+	// Keeps the screen from locking by itself, which would cut the microphone.
+	wakeLock = navigator.wakeLock?.request('screen');
 
 	row.animate(
 		[{height: 0, opacity: 0}, {}],
