@@ -412,8 +412,14 @@ function makeGrabbable(tape, id) {
 		if (mode === 'throttle') {
 			send('release');
 		} else if (!mode && event.type === 'pointerup') {
-			send(wasPlaying ? 'brake' : 'play');
-			tape.direction = wasPlaying ? 0 : 1;
+			if (wasPlaying) {
+				send('brake');
+				tape.direction = 0;
+			} else {
+				const box = row.getBoundingClientRect();
+				tape.direction = event.clientX < (box.left + box.right) / 2 ? -1 : 1;
+				send('play', {speed: tape.direction});
+			}
 		} else if (pressed) {
 			send('drop');
 		}

@@ -41,7 +41,7 @@ class Deck extends AudioWorkletProcessor {
 				this.playbackGain = data.playbackGain;
 			}
 			if (data.type === 'load') this.add(data.samples, data.volume);
-			if (data.type === 'play') tape.target = 1;
+			if (data.type === 'play') tape.target = data.speed;
 			if (data.type === 'press' || data.type === 'brake') {
 				// Stop time is fixed at any speed. A brake after a press keeps the press's rate.
 				if (!tape.pressed) tape.stopRate = Math.abs(tape.speed) / this.spinDownSamples;
