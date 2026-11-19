@@ -12,11 +12,11 @@
 
 <p align="center"><img src="readme_images/volume.gif" width="390"></p>
 
-### run it back.
+### wow and flutter.
 
 <p align="center"><img src="readme_images/throttle.gif" width="390"></p>
 
-### wipeout.
+### scratch that.
 
 <p align="center"><img src="readme_images/delete.gif" width="390"></p>
 
